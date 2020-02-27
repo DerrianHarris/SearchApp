@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29728.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "SearchApp", "SearchApp.pyproj", "{223DC870-1705-42F2-9CD8-13B6A8D2DC25}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{223DC870-1705-42F2-9CD8-13B6A8D2DC25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{223DC870-1705-42F2-9CD8-13B6A8D2DC25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F52A7D04-463C-4E76-9039-C1AC865EFFF0}
+	EndGlobalSection
+EndGlobal
