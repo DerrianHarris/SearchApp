@@ -11,7 +11,7 @@ from collections import deque
 # Variables
 FULLSCREEN = False
 
-window_size = (500,500)
+window_size = (1000,500)
 Cell_Size = 20
 
 
@@ -60,13 +60,13 @@ fontIndex = pygame.font.SysFont("comicsansms",5)
 
 cachedText = {}
 
-
+drawRect = pygame.draw.rect
 
 def doRender():
     global cachedText
     window.fill((0,0,0))
     
-    drawRect = pygame.draw.rect
+    
     for x in range(Num_Cells_X):
         for y in range(Num_Cells_Y):
             if CellValues[PosToIndex((x,y))] == 0:    
@@ -95,7 +95,7 @@ def doRender():
                     anlgeRad =  math.atan2(diff[0],diff[1]) + math.pi/2
                     anlgeDeg = math.degrees(anlgeRad)
 
-                    pointList = []
+                    pointList = [cell.topright,cell.midleft,cell.bottomright]
 
                     if anlgeDeg == 0:
                         pointList = [cell.topleft,cell.midright,cell.bottomleft]
@@ -114,7 +114,7 @@ def doRender():
                     elif anlgeDeg == 225:
                         pointList = [cell.midright,cell.topleft,cell.midbottom]
 
-                    print(anlgeDeg)
+                    #print(anlgeDeg)
 
                     triangle = pygame.draw.polygon(window,(0,0,0),pointList)
                     triangle = pygame.transform.rotate(window,anlgeDeg)
@@ -138,7 +138,7 @@ def doRender():
     elif(searchType == 2):
         sorterText = "Current Searcher: BFS"
     elif(searchType == 3):
-        sorterText = "Current Searcher: "
+        sorterText = "Current Searcher: A*"
     elif(searchType == 4):
         sorterText = "Current Searcher: "
     elif(searchType == 5):
@@ -164,6 +164,8 @@ def doEvent():
     global End_Pos
     global searchType
     global path
+    global useDiag
+
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -190,12 +192,27 @@ def doEvent():
             searchType = 1
         elif event.type == pygame.KEYDOWN and event.key == Locals.K_3:
             searchType = 2
+        elif event.type == pygame.KEYDOWN and event.key == Locals.K_4:
+            searchType = 3
         elif event.type == pygame.KEYDOWN and event.key == Locals.K_RETURN:
+            if Start_Pos == (-1,-1) or End_Pos == (-1,-1):
+                return
+
             doSearch = True
         elif event.type == pygame.KEYDOWN and event.key == Locals.K_ESCAPE:
             run = False
+        elif event.type == pygame.KEYDOWN and event.key == Locals.K_d:
+            useDiag = not useDiag
+        elif event.type == pygame.KEYDOWN and event.key == Locals.K_m:
+            Start_Pos = (-1,-1)
+            End_Pos = (-1,-1)
+            path = []
+            MazeGen(CellValues)
         elif event.type == pygame.KEYDOWN and event.key == Locals.K_r:
+            path = []
             ResetCells(CellValues)
+        elif event.type == pygame.KEYDOWN and event.key == Locals.K_c:
+            SetAllCells(CellValues,0)
             Start_Pos = (-1,-1)
             End_Pos = (-1,-1)
             path = []
@@ -249,6 +266,7 @@ def doLogic():
     if doSearch:
         
         path = []
+        ResetCells(CellValues)
         if(searchType == 0):
             path = Dijkstra(CellValues,Start_Pos,End_Pos)
         elif(searchType == 1):
@@ -256,6 +274,8 @@ def doLogic():
             path.reverse()
         elif(searchType == 2):
             path = BFS(CellValues,Start_Pos,End_Pos)
+        elif(searchType == 3):
+            path = A_Star(CellValues,Start_Pos,End_Pos)
         HighlightPath(CellValues,Start_Pos, End_Pos, path)
         doSearch = False
 
@@ -276,12 +296,72 @@ def DFS(Graph, Start, End):
 
             if(u == End):
                 break
-            for Neighbor in GetNeighbors(u):
+            for Neighbor in GetNeighbors(u,useDiag):
+                
                 nIndex = PosToIndex(Neighbor)
+
+                if isWall(CellValues,nIndex):
+                    continue
+
                 if not Visited[nIndex]:
                     Stack.append(Neighbor)
             doRender()
+
+    if not End in path:
+        return []
     return path
+
+def A_Star(Graph, Start, End):
+    openSet = [Start]
+    cameFrom = [None] * (len(Graph))
+    gScore = [float(math.inf)] * len(Graph)
+    fScore = [float(math.inf)] * len(Graph)
+
+    startIndex = PosToIndex(Start)
+
+    gScore[startIndex] = 0
+    fScore[startIndex] = heuristic(Start,End)
+
+    while len(openSet) > 0:
+        currentIndex = GetMin(fScore,openSet)
+        current = IndexToPos(currentIndex)
+
+        if( not (current  == Start) and not (current == End) and not isWall(CellValues,currentIndex)):
+                Graph[currentIndex] = 5
+        if current == End:
+            break
+        openSet.remove(current)
+        
+        for Neighbor in GetNeighbors(current,useDiag):
+            nIndex = PosToIndex(Neighbor)
+
+            if isWall(CellValues,nIndex):
+                    continue
+
+            tentative_gScore = gScore[currentIndex] + length(current,Neighbor)
+            if tentative_gScore < gScore[nIndex]:
+                cameFrom[nIndex] = current
+                gScore[nIndex] = tentative_gScore
+                fScore[nIndex] = gScore[nIndex] + heuristic(Neighbor,End)
+                if not (Neighbor in openSet):
+                    openSet.append(Neighbor)
+        doRender()
+
+    S = []
+    u = End
+    uIndex = PosToIndex(u)
+    if cameFrom[uIndex] is not None or u == Start:          #Do something only if the vertex is reachable
+        while u is not None:                         #Construct the shortest path with a stack S
+            uIndex = PosToIndex(u)
+            S.append(u)                             #Push the vertex onto the stack
+            u = cameFrom[uIndex]
+
+    return S
+
+
+def heuristic(cell,goal):
+    return length(cell,goal)
+
 
 def BFS(Graph, Start, End):
     Q = deque([Start])
@@ -298,8 +378,10 @@ def BFS(Graph, Start, End):
         if(v == End):
             break
         
-        for Neighbor in GetNeighbors(v):
+        for Neighbor in GetNeighbors(v,useDiag):
             nIndex = PosToIndex(Neighbor)
+            if isWall(CellValues,nIndex):
+                    continue
             if not Visited[nIndex]:
                 Visited[nIndex] = True
                 prev[nIndex] = v
@@ -328,7 +410,7 @@ def Dijkstra(Graph, Start, End):
     dist[PosToIndex(Start)] = 0
 
     while len(Q) > 0:
-        uIndex = minDistance(dist,Q)
+        uIndex = GetMin(dist,Q)
         u = IndexToPos(uIndex)
         try:
             Q.remove(u)
@@ -341,7 +423,7 @@ def Dijkstra(Graph, Start, End):
         if u == End:
             break
        
-        for v in GetNeighbors(u):
+        for v in GetNeighbors(u,useDiag):
             vIndex = PosToIndex(v)
 
             if isWall(CellValues,vIndex):
@@ -370,17 +452,18 @@ def Dijkstra(Graph, Start, End):
 def length(a,b):
     return int(math.sqrt( (b[0]- a[0]) * (b[0]- a[0]) + (b[1]- a[1]) * (b[1]- a[1]) ) * 10)
 
-def minDistance(dist,Q):
+def GetMin(dist,Q):
     min = float(math.inf)
     minIndex = 0
 
-    for index in range(len(dist)):
-        if(dist[index] < min and IndexToPos(index) in Q):
-            minIndex = index
-            min = dist[index]
+    for v in Q:
+        vIndex = PosToIndex(v)
+        if(dist[vIndex] < min):
+            minIndex = vIndex
+            min = dist[vIndex]
     return minIndex
 
-def GetNeighbors(pos):
+def GetNeighbors(pos, useDiagnal):
     Neighbors = []
     for x in range(-1,2):
         for y in range(-1,2):
@@ -389,7 +472,7 @@ def GetNeighbors(pos):
 
             neighborPos = (pos[0] + x, pos[1]+ y)
 
-            if length(pos, neighborPos) == 14 and not useDiag:
+            if length(pos, neighborPos) == 14 and not useDiagnal:
                 continue
 
             if(neighborPos[0] >= 0 and neighborPos[1] >= 0 and neighborPos[0] < Num_Cells_X and neighborPos[1] < Num_Cells_Y):
@@ -404,9 +487,58 @@ def HighlightPath(Graph, Start, End, Path):
         if( not (V  == Start) and not (V == End)):
             CellValues[PosToIndex(V)] = 4
 
+def SetAllCells(Graph,val):
+    
+    for i in range(len(Graph)):
+        Graph[i] = val
+
 def ResetCells(Graph):
     for i in range(len(Graph)):
-        Graph[i] = 0
+        val = Graph[i]
+        if val >= MaxCellValue:
+            Graph[i] = 0
+
+
+
+def MazeGen(Graph):
+    SetAllCells(Graph,3)
+
+    StartIndex = random.randint(0,len(Graph)-1)
+    Start = IndexToPos(StartIndex)
+
+    Graph[StartIndex] = 0
+    Walls = []
+    
+    Walls.extend(GetNeighbors(Start, False))
+
+
+    while len(Walls) > 0:
+        UV = []
+        Wall = random.choice(Walls)
+        WallIndex = PosToIndex(Wall)
+
+
+        Neighbors = GetNeighbors(Wall,False)
+        for Neighbor in Neighbors:
+            nIndex = PosToIndex(Neighbor)
+
+            diff = (Neighbor[0] - Wall[0],Neighbor[1]- Wall[1])
+            opp = (Wall[0]-diff[0],Wall[1]-diff[1])
+
+            if(opp[0] >= 0 and opp[1] >= 0 and opp[0] < Num_Cells_X and opp[1] < Num_Cells_Y) and Graph[nIndex] == 0:
+                UV.append(opp)
+
+
+        if len(UV) == 1:
+            Graph[WallIndex] = 0
+            uvIndex = PosToIndex(UV[0])
+            Graph[uvIndex] = 0
+            for Neighbor in GetNeighbors(UV[0], False):
+                nIndex = PosToIndex(Neighbor)
+                if Graph[nIndex] == 3:
+                    Walls.append(Neighbor)
+        Walls.remove(Wall)
+        doRender()
 
 while run:
     doEvent()
