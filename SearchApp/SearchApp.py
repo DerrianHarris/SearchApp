@@ -37,7 +37,7 @@ Text_Pos = (math.floor(Width/2),(Height - math.floor((Height_Padding/2))))
 run = True
 searchType = 0
 doSearch = False
-useDiag = False
+useDiag = True
 showPos = False
 
 Num_Cells_X = math.floor(Width/Cell_Size)
@@ -85,6 +85,39 @@ def doRender():
 
             rect = (x* Cell_Size,Cell_Start - (y*Cell_Size),Cell_Size-0.5,Cell_Size-0.5)
             cell = drawRect(window,Color,rect)
+
+            if (not doSearch) and (x,y) in path:
+                index = path.index((x,y))
+                if not index == 0:
+                    
+                    diff = (x - path[index-1][0],y - path[index-1][1])
+                    anlgeRad =  math.atan2(diff[0],diff[1]) + math.pi/2
+                    anlgeDeg = math.degrees(anlgeRad)
+
+                    pointList = []
+
+                    if anlgeDeg == 0:
+                        pointList = [cell.topleft,cell.midright,cell.bottomleft]
+                    elif anlgeDeg == 90:
+                        pointList = [cell.topleft,cell.midbottom,cell.topright]
+                    elif anlgeDeg == 180:
+                        pointList = [cell.topright,cell.midleft,cell.bottomright]
+                    elif anlgeDeg == 270:
+                        pointList = [cell.bottomleft,cell.midtop,cell.bottomright]
+                    elif anlgeDeg == 45:
+                        pointList = [cell.midleft,cell.bottomright,cell.midtop]
+                    elif anlgeDeg == 135:
+                        pointList = [cell.midright,cell.bottomleft,cell.midtop]
+                    elif anlgeDeg == -45:
+                        pointList = [cell.midleft,cell.topright,cell.midbottom]
+                    elif anlgeDeg == 225:
+                        pointList = [cell.midright,cell.topleft,cell.midbottom]
+
+                    print(anlgeDeg)
+
+                    triangle = pygame.draw.polygon(window,(0,0,0),pointList)
+                    triangle = pygame.transform.rotate(window,anlgeDeg)
+          
             if showPos:
                 if PosToIndex((x,y)) + 7 not in cachedText:
                    cachedText[PosToIndex((x,y)) + 7] = fontIndex.render(str(IndexToPos(PosToIndex((x,y)))),True,(0,0,0))
@@ -93,8 +126,8 @@ def doRender():
                 textRect.center = cell.center
                 pygame.display.get_surface().blit(text,textRect)
             
-
     
+
     sorterText = ""
 
     if(searchType == 0):
@@ -129,6 +162,7 @@ def doEvent():
     global Start_Pos
     global End_Pos
     global searchType
+    global path
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -161,6 +195,7 @@ def doEvent():
             ResetCells(CellValues)
             Start_Pos = (-1,-1)
             End_Pos = (-1,-1)
+            path = []
 
 
 def PosToIndex(pos):
@@ -202,32 +237,46 @@ def SetCellValue(arr, index, val,inc):
             arr[index] = val
             CycleCellValue(arr,index,inc)
 
+
+path = []
 def doLogic():
     global doSearch
+    global path
+
     if doSearch:
+        
         path = []
         if(searchType == 0):
             path = Dijkstra(CellValues,Start_Pos,End_Pos)
         elif(searchType == 1):
             path = DFS(CellValues,Start_Pos,End_Pos)
+            path.reverse()
         HighlightPath(CellValues,Start_Pos, End_Pos, path)
         doSearch = False
 
 def DFS(Graph, Start, End):
     path = []
     Visited = [False] * (len(Graph)) 
-    DFSHelper(Graph,Start,End,Visited,path)
+    Stack = [Start]
+    while len(Stack) > 0:
+        u = Stack.pop()
+        uIndex = PosToIndex(u)
+        if not Visited[uIndex]:
+            Visited[uIndex] = True
+
+            if( not (u  == Start) and not (u == End) and not isWall(CellValues,uIndex)):
+                Graph[uIndex] = 5
+
+            path.append(u)
+
+            if(u == End):
+                break
+            for Neighbor in GetNeighbors(u):
+                nIndex = PosToIndex(Neighbor)
+                if not Visited[nIndex]:
+                    Stack.append(Neighbor)
+            doRender()
     return path
-
-def DFSHelper(Graph, Curr, End, Visited, Path):
-    Visited[PosToIndex(Curr)] = True
-    for Neighbor in GetNeighbors(Curr):
-        index = PosToIndex(Neighbor)
-        if Visited[index] == False:
-                if(End == Neighbor):
-                    return Neighbor
-                Path.append(DFSHelper(Graph,Neighbor,End,Visited,Path))
-
 
 def Dijkstra(Graph, Start, End):
     timer = 0
