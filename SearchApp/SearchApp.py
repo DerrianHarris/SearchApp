@@ -4,6 +4,7 @@ import random
 import math
 import time
 import colorsys
+from collections import deque
 #import winsound
 
 
@@ -37,7 +38,7 @@ Text_Pos = (math.floor(Width/2),(Height - math.floor((Height_Padding/2))))
 run = True
 searchType = 0
 doSearch = False
-useDiag = True
+useDiag = False
 showPos = False
 
 Num_Cells_X = math.floor(Width/Cell_Size)
@@ -135,7 +136,7 @@ def doRender():
     elif(searchType == 1):
         sorterText = "Current Searcher: DFS"
     elif(searchType == 2):
-        sorterText = "Current Searcher: "
+        sorterText = "Current Searcher: BFS"
     elif(searchType == 3):
         sorterText = "Current Searcher: "
     elif(searchType == 4):
@@ -187,6 +188,8 @@ def doEvent():
             searchType = 0
         elif event.type == pygame.KEYDOWN and event.key == Locals.K_2:
             searchType = 1
+        elif event.type == pygame.KEYDOWN and event.key == Locals.K_3:
+            searchType = 2
         elif event.type == pygame.KEYDOWN and event.key == Locals.K_RETURN:
             doSearch = True
         elif event.type == pygame.KEYDOWN and event.key == Locals.K_ESCAPE:
@@ -251,6 +254,8 @@ def doLogic():
         elif(searchType == 1):
             path = DFS(CellValues,Start_Pos,End_Pos)
             path.reverse()
+        elif(searchType == 2):
+            path = BFS(CellValues,Start_Pos,End_Pos)
         HighlightPath(CellValues,Start_Pos, End_Pos, path)
         doSearch = False
 
@@ -277,6 +282,40 @@ def DFS(Graph, Start, End):
                     Stack.append(Neighbor)
             doRender()
     return path
+
+def BFS(Graph, Start, End):
+    Q = deque([Start])
+    Visited = [False] * (len(Graph)) 
+    prev = [None] * (len(Graph)) 
+
+    Visited[PosToIndex(Start)] = True
+    while len(Q) > 0:
+        v = Q.popleft()
+        vIndex = PosToIndex(v)
+        if( not (v  == Start) and not (v == End) and not isWall(CellValues,vIndex)):
+            Graph[vIndex] = 5
+        path.append(v)
+        if(v == End):
+            break
+        
+        for Neighbor in GetNeighbors(v):
+            nIndex = PosToIndex(Neighbor)
+            if not Visited[nIndex]:
+                Visited[nIndex] = True
+                prev[nIndex] = v
+                Q.append(Neighbor)
+        doRender()
+
+    S = []
+    u = End
+    uIndex = PosToIndex(u)
+    if prev[uIndex] is not None or u == Start:          #Do something only if the vertex is reachable
+        while u is not None:                         #Construct the shortest path with a stack S
+            uIndex = PosToIndex(u)
+            S.append(u)                             #Push the vertex onto the stack
+            u = prev[uIndex]
+
+    return S
 
 def Dijkstra(Graph, Start, End):
     timer = 0
